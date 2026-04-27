@@ -1,226 +1,226 @@
-# Harness Engineering Demo Design
+# Harness Engineering Demo 设计说明
 
-## Summary
+## 概述
 
-This project is a teaching-oriented full-stack demo built around a deliberately simple TODO product. Its primary purpose is to make Harness Engineering visible. The application should show how an engineer designs the environment, clarifies intent, and builds feedback loops so an agent can act reliably.
+这个项目是一个教学导向的全栈 Demo，业务产品故意保持为一个简单的 TODO 应用，核心目的不是展示复杂功能，而是把 Harness Engineering 这套工程范式可视化地呈现出来。应用需要清楚展示：工程师如何通过设计环境、明确意图、构建反馈回路，让智能体能够稳定地完成工作。
 
-The demo targets two audiences at once:
-- Internal engineering teams that want a practical reference implementation
-- External viewers who need a fast, concrete explanation of the pattern
+这个 Demo 面向两类受众：
+- 内部工程团队：作为可落地的参考实现
+- 外部观察者：作为快速理解这套范式的具体样板
 
-The product surface stays intentionally small. The harness surface is the main feature.
+产品面保持最小化，Harness 面才是主角。
 
-## Goals
+## 目标
 
-- Deliver a complete front end and back end application that is easy to run locally
-- Show a visible harness lifecycle: intent normalization, planning, execution, checks, approval, and final state mutation
-- Support two execution modes:
-  - Demo mode with deterministic local execution for reliable presentations
-  - Live mode with optional OpenAI API integration
-- Keep business state and harness state clearly separated in both architecture and UI
-- Make evaluation and intervention points legible to users without requiring them to inspect source code
+- 交付一个本地易运行的完整前后端应用
+- 可视化展示完整的 harness 生命周期：意图规范化、规划、执行、检查、审批、最终状态变更
+- 支持两种执行模式：
+  - Demo Mode：本地确定性执行，用于稳定演示
+  - Live Mode：可选接入 OpenAI API
+- 在架构和界面上明确区分业务状态与 harness 状态
+- 让用户无需阅读源码，也能看懂系统的检查点、干预点和决策路径
 
-## Non-Goals
+## 非目标
 
-- Building a feature-rich productivity app
-- Simulating a general multi-agent operating system
-- Hiding the control layer behind a polished but opaque UX
-- Depending on live API access for the default experience
+- 构建一个功能丰富的生产力工具
+- 模拟一个通用型多智能体操作系统
+- 用光滑但不透明的交互隐藏控制层
+- 让默认体验依赖外部 API
 
-## Design Principles
+## 设计原则
 
-The design follows the public OpenAI framing from February 11, 2026:
-- Repository-local artifacts should be the system of record
-- Constraints should be encoded as explicit, checkable rules
-- The valuable engineering work is in scaffolding, not hand-writing application logic
+本设计遵循 OpenAI 于 2026 年 2 月 11 日公开提出的思路：
+- 仓库内工件应当成为系统事实来源
+- 约束应当被编码为显式、可检查的规则
+- 真正有价值的工程工作在于搭建脚手架，而不是手写每一步应用逻辑
 
-In this demo, those principles translate to:
-- Clear runtime boundaries between application state and harness state
-- Structured intent and structured outcomes instead of free-form hidden behavior
-- Evaluation before mutation
-- Human review for risky changes
-- Event traces that explain why the system acted the way it did
+在这个 Demo 中，这些原则具体体现为：
+- 清晰划分应用状态与 harness 状态的运行边界
+- 使用结构化意图和结构化结果，而不是隐藏的自由文本行为
+- 先评估，再变更
+- 高风险变更必须引入人工确认
+- 通过事件轨迹解释系统为何这样行动
 
-## User Experience
+## 用户体验
 
-The application has two primary surfaces shown side by side on desktop and stacked on mobile.
+应用包含两个核心界面区域：桌面端左右并列，移动端上下堆叠。
 
 ### 1. Todo Workspace
 
-This is the minimal product:
-- Create, edit, complete, reprioritize, and archive tasks
-- Set due dates and list membership
-- View task status and simple metadata
+这是最小产品面，包含：
+- 创建、编辑、完成、调整优先级、归档任务
+- 设置到期时间和所属列表
+- 查看任务状态与基础元数据
 
-This surface exists to provide believable state for the harness to act on. It should feel functional, but not dominate the demo.
+这个区域的作用是为 harness 提供可信的业务状态，而不是成为展示重点。它需要完整可用，但不应该压过 harness 展示面。
 
 ### 2. Harness Panel
 
-This is the teaching surface:
-- Intent input for natural-language goals
-- Structured intent summary showing goal, constraints, assumptions, and risk level
-- Plan summary showing proposed actions
-- Execution timeline showing each step and outcome
-- Check results showing schema validation, policy validation, and scenario evaluation
-- Approval drawer for gated actions
-- Final mutation summary explaining exactly what changed
+这是教学展示面，包含：
+- 自然语言意图输入框
+- 结构化意图摘要：展示目标、约束、假设、风险等级
+- 计划摘要：展示建议执行步骤
+- 执行时间线：展示每一步的动作与结果
+- 检查结果：展示 schema 校验、policy 校验、scenario evaluation
+- 审批抽屉：展示需要人工确认的动作
+- 最终变更摘要：解释系统到底改了什么
 
-The harness panel should make it obvious that the system is not directly applying user text to business state.
+Harness Panel 必须明确传达一件事：系统不会把用户输入的自然语言直接写入业务状态。
 
-## Core Interaction Flow
+## 核心交互流
 
-The main path is:
+主路径如下：
 
-1. User submits a high-level intent such as "clean up overdue tasks" or "prepare next week's sprint board"
-2. The back end converts that request into an `IntentSpec`
-3. The harness engine creates an execution plan
-4. The executor proposes business mutations
-5. The evaluation loop runs before any write is committed
-6. The system either applies safe changes, retries bounded failures, rejects invalid actions, or requests approval for risky actions
-7. The timeline records every decision and outcome
+1. 用户提交一个高层目标，例如“清理过期任务”或“准备下周迭代看板”
+2. 后端把这个请求转换成 `IntentSpec`
+3. Harness Engine 基于 `IntentSpec` 生成执行计划
+4. 执行器提出业务变更建议
+5. 在任何写入发生之前，先进入评估回路
+6. 系统根据检查结果选择自动提交、有限重试、拒绝执行，或请求人工审批
+7. 整个过程的每一步都记录到时间线中
 
-This flow should be visible in the UI as:
+这个流程在界面上应当明确表现为：
 - `Intent -> Plan -> Execute -> Check -> Approve`
 
-## System Architecture
+## 系统架构
 
-The project uses a separated front end and back end:
-- Front end: React + TypeScript application
-- Back end: FastAPI application
-- Persistence: SQLite for local development and demo reliability
+项目采用前后端分离结构：
+- 前端：React + TypeScript
+- 后端：FastAPI
+- 持久化：SQLite，用于本地开发与稳定演示
 
-The back end is divided into two top-level domains.
+后端分为两个顶层领域。
 
 ### Todo Domain
 
-Responsibility:
-- Store and mutate canonical task data
-- Enforce ordinary business rules unrelated to agent orchestration
+职责：
+- 存储并变更规范业务任务数据
+- 执行与 agent 编排无关的普通业务规则
 
-Key capabilities:
-- CRUD for tasks and task lists
-- Bulk archive and status updates
-- Audit-friendly mutation endpoints used by the harness engine
+关键能力：
+- 任务与任务列表的 CRUD
+- 批量归档与状态更新
+- 供 harness engine 调用、具备审计语义的变更接口
 
 ### Harness Engine
 
-Responsibility:
-- Turn user intent into structured execution
-- Route execution through validation and approval loops
-- Persist the observable control-plane history
+职责：
+- 把用户意图转换为结构化执行过程
+- 让执行过程经过验证与审批回路
+- 持久化可观察的控制平面历史
 
-Key capabilities:
-- Intent normalization
-- Plan creation
-- Execution mode dispatch
-- Policy evaluation
-- Scenario evaluation
-- Retry and approval decisions
-- Event timeline persistence
+关键能力：
+- 意图规范化
+- 执行计划生成
+- 执行模式分发
+- Policy 评估
+- Scenario 评估
+- 重试与审批决策
+- 事件时间线持久化
 
-### Separation Rule
+### 分离规则
 
-TODO entities and harness entities must be stored separately. Business state answers "what tasks exist now?" Harness state answers "how did the system decide what to do?" That separation is central to the teaching value of the demo.
+TODO 实体和 harness 实体必须分开存储。业务状态回答的是“现在有哪些任务”，harness 状态回答的是“系统为什么会这样决定”。这个分离本身就是 Demo 的教学重点之一。
 
-## Execution Modes
+## 执行模式
 
 ### Demo Mode
 
-Default mode for local use and presentations.
+默认模式，面向本地运行和对外演示。
 
-Characteristics:
-- No external API dependency
-- Deterministic planner and executor behavior
-- Stable sample outputs for known intent patterns
-- Full compatibility with the same validation and approval pipeline used in live mode
+特征：
+- 不依赖外部 API
+- Planner 和 Executor 的行为具有确定性
+- 对已支持的典型意图返回稳定结果
+- 与 Live Mode 共用同一套验证与审批回路
 
-Purpose:
-- Make the app reliably demoable
-- Let users inspect the harness behavior without provisioning credentials
+目的：
+- 保证项目稳定可演示
+- 让用户无需配置凭证也能完整观察 harness 行为
 
 ### Live Mode
 
-Optional mode enabled by configuration.
+可选模式，通过配置启用。
 
-Characteristics:
-- Uses OpenAI API for plan and execution proposal generation
-- Must still produce structured outputs compatible with the same downstream checks
-- Must never bypass policy validation, scenario evaluation, or approval gates
+特征：
+- 使用 OpenAI API 生成计划和变更建议
+- 输出仍必须满足与 Demo Mode 相同的结构化约束
+- 绝不能绕过 policy 校验、scenario evaluation 和审批门
 
-Purpose:
-- Show that the harness is not a fake front end over static rules
-- Demonstrate how the same environment can wrap a real model call
+目的：
+- 证明这个系统不是一层静态规则假壳
+- 展示同一套环境如何包裹真实模型调用
 
-## Intent Model
+## 意图模型
 
-Each user request is normalized into an `IntentSpec` with at least:
-- Raw request text
-- Goal
-- Target scope
-- Constraints
-- Assumptions
-- Risk level
-- Success criteria
-- Proposed action types
+每次用户请求都要被规范化为一个 `IntentSpec`，至少包含：
+- 原始请求文本
+- 目标
+- 作用范围
+- 约束
+- 假设
+- 风险等级
+- 成功标准
+- 建议动作类型
 
-The UI should display this object in human-readable form so viewers can see the difference between raw intent and executable intent.
+界面需要以人类可读方式展示这个对象，让用户能直观看到“原始意图”和“可执行意图”的差别。
 
-## Feedback Loop Design
+## 反馈回路设计
 
-The feedback loop is the core of the project.
+反馈回路是这个项目的核心。
 
-### Schema Validation
+### Schema 校验
 
-Structured plan and action proposals must match expected shapes. Invalid structures stop execution immediately and are shown as blocked events.
+结构化计划和动作建议必须符合预期结构。结构不合法时应立即中止执行，并在时间线中显示为被阻断事件。
 
-### Policy Validation
+### Policy 校验
 
-The harness applies explicit rules such as:
-- No destructive bulk action without approval
-- No mutation of archived tasks unless explicitly requested
-- No changes outside the inferred target scope
-- No silent deletion of user-authored content
+Harness 需要执行显式规则，例如：
+- 未经审批，不允许执行破坏性批量操作
+- 未明确提出时，不允许修改已归档任务
+- 不允许超出推断出的目标范围进行变更
+- 不允许静默删除用户创建内容
 
-Policy failures should produce one of:
-- Revise and retry
-- Reject
-- Approval required
+Policy 失败后应进入以下路径之一：
+- 修改并重试
+- 直接拒绝
+- 请求审批
 
 ### Scenario Evaluation
 
-The system runs lightweight state-aware checks before commit. Examples:
-- A cleanup request should not archive incomplete high-priority tasks
-- A sprint setup request should not duplicate tasks already present in the target list
-- A reschedule request should not create impossible dates
+系统在提交前运行轻量、状态感知的检查，例如：
+- 清理请求不应归档未完成的高优先级任务
+- 迭代准备请求不应向目标列表重复添加已有任务
+- 重排日期请求不应制造不合理日期
 
-### Human Approval Gate
+### 人工审批门
 
-Risky actions should pause for review. The user can approve or reject with the result captured in the event timeline.
+高风险动作必须暂停等待人工确认。用户的批准或拒绝结果都要写入事件时间线。
 
-### Trace Timeline
+### 轨迹时间线
 
-Every stage writes structured events, including:
-- Intent accepted
-- Plan created
-- Action proposed
-- Validation passed or failed
-- Retry requested
-- Approval requested
-- Mutation committed
-- Mutation rejected
+每个阶段都需要产生结构化事件，包括：
+- 意图已接受
+- 计划已生成
+- 动作已提出
+- 校验通过或失败
+- 请求重试
+- 请求审批
+- 变更已提交
+- 变更已拒绝
 
-The timeline is both a debugging tool and the main teaching artifact.
+这条时间线既是调试工具，也是最重要的教学工件。
 
-## Data Model Direction
+## 数据模型方向
 
-The initial implementation should include these entities.
+首个实现至少应包含以下实体。
 
-Business entities:
+业务实体：
 - Task
 - TaskList
 - AuditEntry
 
-Harness entities:
+Harness 实体：
 - IntentRun
 - IntentSpec
 - PlanStep
@@ -229,79 +229,79 @@ Harness entities:
 - ApprovalRequest
 - TraceEvent
 
-The implementation should keep these entities in separate modules and APIs where practical. `IntentSpec` may be stored either as a first-class table or as structured JSON attached to `IntentRun`, but the read API must expose it as its own object.
+这些实体在实现中应尽量保持模块和 API 边界分离。`IntentSpec` 可以作为独立表，也可以作为挂在 `IntentRun` 上的结构化 JSON，但在读接口中必须被暴露为单独对象。
 
-## API Shape
+## API 方向
 
-The initial implementation should include:
-- Standard task CRUD endpoints
-- Endpoint to submit a high-level intent
-- Endpoint to fetch run details and timeline events
-- Endpoint to approve or reject gated actions
-- Endpoint to read the current execution mode
-- Environment-based configuration to enable live mode when credentials are present
+首个实现至少应包含：
+- 标准任务 CRUD 接口
+- 提交高层意图的接口
+- 获取运行详情与时间线事件的接口
+- 审批或拒绝高风险动作的接口
+- 查询当前执行模式的接口
+- 通过环境变量启用 Live Mode 的配置方式
 
-The API must make it obvious which endpoints belong to the product domain and which belong to the harness domain.
+API 的命名和路由应当让人一眼看出哪些属于产品域，哪些属于 harness 域。
 
-## Error Handling
+## 错误处理
 
-The system should treat errors as observable control-plane events.
+系统应把错误视为可观察的控制平面事件。
 
-Requirements:
-- Planner or executor failures must create trace events instead of silent 500-only failures
-- Invalid live-mode model output must be surfaced as structured validation failure
-- Retryable failures must stop after a bounded retry count and mark the run as failed
-- Approval rejection must preserve the proposed mutation and reason for rejection in the run history
-- Product-domain write errors must roll back the mutation and emit a failed commit event
+要求：
+- Planner 或 Executor 失败时，不能只留下 500，必须写入 trace event
+- Live Mode 返回非法结构化输出时，必须显式暴露为校验失败
+- 可重试错误必须有上限，超过后将本次运行标记为失败
+- 用户拒绝审批后，仍要保留原始变更建议和拒绝原因
+- 业务写入失败时必须回滚，并写入提交失败事件
 
-## Front-End Behavior
+## 前端行为
 
-The front end should prioritize legibility over flourish.
+前端应优先强调可读性，而不是装饰性。
 
-Requirements:
-- Two clear surfaces: Todo Workspace and Harness Panel
-- Fast visibility into what changed and why
-- Distinct visual treatment for blocked, retried, approved, and committed states
-- Responsive layout that preserves the teaching flow on smaller screens
+要求：
+- 明确分成 `Todo Workspace` 和 `Harness Panel` 两个区域
+- 用户能够快速看见“发生了什么”以及“为什么会发生”
+- 被阻断、重试中、已审批、已提交这几类状态要有明确视觉区分
+- 在小屏下仍能保留完整教学路径
 
-The interface should feel like an operational tool, not a marketing site.
+整体界面应更像操作台，而不是营销页。
 
-## Testing Strategy
+## 测试策略
 
-The tests should prove not only that the TODO app works, but that the harness behaves correctly.
+测试不仅要证明 TODO 应用可用，还要证明 harness 行为正确。
 
-Required coverage areas:
-- Intent normalization produces valid structured specs
-- Demo mode execution produces stable proposed mutations for supported intents
-- Policy rules block prohibited operations
-- Approval gate blocks risky writes until user action
-- Scenario evaluation catches invalid task mutations
-- Business-state writes only happen after passing checks
-- Front-end rendering reflects timeline and approval state correctly
+必须覆盖：
+- 意图规范化能生成合法结构化 `IntentSpec`
+- Demo Mode 对已支持意图生成稳定的变更建议
+- Policy 规则能拦截不允许的操作
+- Approval Gate 能在用户确认前阻止高风险写入
+- Scenario Evaluation 能发现非法任务变更
+- 只有在通过检查后，业务状态才会真正写入
+- 前端能正确反映时间线和审批状态
 
-The implementation should prefer focused tests around harness behavior over broad UI snapshot coverage.
+实现时应优先写小而聚焦的 harness 行为测试，而不是大面积 UI 快照测试。
 
-## Documentation Requirements
+## 文档要求
 
-The repository should include concise documentation that explains:
-- What Harness Engineering means in the context of this demo
-- Which parts of the application are product-plane vs control-plane
-- How to run demo mode
-- How to enable live mode
-- Where feedback rules are defined
+仓库内文档默认使用中文，并应至少说明：
+- 在这个 Demo 语境下，Harness Engineering 是什么
+- 哪些部分属于产品平面，哪些部分属于控制平面
+- 如何运行 Demo Mode
+- 如何启用 Live Mode
+- 反馈规则定义在什么位置
 
-The repo should teach through local artifacts, not through external explanation alone.
+这个仓库应通过本地工件教学，而不是依赖仓库外解释。
 
-## Acceptance Criteria
+## 验收标准
 
-The project is successful when all of the following are true:
-- A new user can run the project locally without external credentials
-- The TODO app is functional enough to create realistic state
-- A user can submit a natural-language goal and observe a full harness lifecycle
-- Failed checks and approval gates are visible and understandable
-- The same UI can demonstrate both demo mode and live mode
-- The repository structure and documentation clearly express the engineering pattern being demonstrated
+当以下条件全部满足时，项目算成功：
+- 新用户无需外部凭证即可在本地运行项目
+- TODO 应用足够可用，能够形成可信的业务状态
+- 用户可以提交自然语言目标，并观察完整 harness 生命周期
+- 检查失败和审批门行为是清晰可见、可理解的
+- 同一套 UI 能同时演示 Demo Mode 与 Live Mode
+- 仓库结构和文档能够清楚表达这套工程范式
 
-## Delivery Direction
+## 交付方向
 
-The implementation should optimize for clarity, determinism, and demonstrability. When there is tension between adding product depth and making the harness easier to understand, the harness wins.
+实现时应优先优化清晰度、确定性和可演示性。当“增加产品深度”和“让 harness 更容易被理解”发生冲突时，以 harness 为先。
