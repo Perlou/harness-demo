@@ -1,11 +1,3 @@
-+++
-date = '2026-05-01T11:00:00+08:00'
-draft = false
-title = '深入解析 Harness Engineering：从零开始的完整指南'
-categories = ['AI', '技术']
-tags = ['AI', 'Agents', 'Harness Engineering', 'OpenAI']
-+++
-
 # 深入解析 Harness Engineering：从零开始的完整指南
 
 > 📦 **配套开源参考实现**：[github.com/Perlou/harness-demo](https://github.com/Perlou/harness-demo)
