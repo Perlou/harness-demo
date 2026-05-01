@@ -36,6 +36,13 @@ export const CheckFinding = z.object({
 
   /** 出问题的位置（例如 "steps[0].sql 第 3 列"），尽量精确。 */
   location: z.string().optional(),
+
+  /**
+   * policy 给"需要人工批准但不直接拒绝"的动作。会让 engine 在 approval
+   * 阶段强制走 pending-approval，无视 IntentSpec.riskLevel。
+   * 默认 false / 不存在。
+   */
+  requiresApproval: z.boolean().optional(),
 })
 export type CheckFinding = z.infer<typeof CheckFinding>
 

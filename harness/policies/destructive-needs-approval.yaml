@@ -1,0 +1,14 @@
+id: destructive-needs-approval
+description: 写操作（INSERT / UPDATE / DELETE）必须走人工审批
+applies_to:
+  steps: [write]
+match:
+  type: statement-kind
+  kinds:
+    - insert
+    - update
+    - delete
+on_match:
+  decision: require_approval
+  message: "{kind} 是写操作，需要人工批准后才能执行"
+  suggestion: "请用 \"harness approve <run-id>\" 批准，或用 reject 拒绝"

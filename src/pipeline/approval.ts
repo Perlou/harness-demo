@@ -1,11 +1,15 @@
 /**
  * Approval 阶段 —— 决定一个 Plan 是自动通过、需要人工审批，还是被拒绝。
  *
- * M3 决策表（占位逻辑，M5/M6 会扩充）：
- *   - 检查未通过 → "rejected"
- *   - riskLevel = read → "auto"（自动通过）
- *   - riskLevel = write-low → "auto"（v1 不区分 low/high；保留扩展位）
- *   - riskLevel = write-high → "pending"
+ * 决策表：
+ *   1. 三道检查未全过 → "rejected"
+ *   2. 任一 finding 标记 requiresApproval=true → "pending"（无视 riskLevel）
+ *   3. riskLevel = read / write-low → "auto"
+ *   4. riskLevel = write-high → "pending"
+ *
+ * 第 2 条是 policy 触发的"升级"路径：例如
+ * destructive-needs-approval.yaml 命中 UPDATE 后，会在 finding 上打
+ * requiresApproval=true，让本来 read 风险的 plan 也被升级到人工审批。
  */
 
 import type {
@@ -34,6 +38,26 @@ export function decideApproval(
     return "rejected"
   }
 
+  // 任何一道检查的 finding 标记了 requiresApproval 都升级成 pending
+  const allFindings = [
+    ...evalResult.schemaCheck.findings,
+    ...evalResult.policyCheck.findings,
+    ...evalResult.scenarioCheck.findings,
+  ]
+  const escalation = allFindings.find((f) => f.requiresApproval === true)
+  if (escalation !== undefined) {
+    ctx.trace.emit({
+      stage: "approve",
+      kind: "approval.required",
+      payload: {
+        reason: "policy_escalation",
+        ruleId: escalation.ruleId,
+        planSteps: plan.steps.length,
+      },
+    })
+    return "pending"
+  }
+
   switch (intent.riskLevel) {
     case "read":
     case "write-low":
@@ -47,7 +71,11 @@ export function decideApproval(
       ctx.trace.emit({
         stage: "approve",
         kind: "approval.required",
-        payload: { riskLevel: intent.riskLevel, planSteps: plan.steps.length },
+        payload: {
+          reason: "high_risk",
+          riskLevel: intent.riskLevel,
+          planSteps: plan.steps.length,
+        },
       })
       return "pending"
     default: {

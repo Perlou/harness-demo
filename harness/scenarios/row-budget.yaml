@@ -1,0 +1,12 @@
+id: row-budget
+description: 单次查询估算返回行数不能超过预算
+type: explain-row-estimate
+applies_to:
+  steps: [read]
+threshold:
+  # 预算来自 HARNESS_ROW_BUDGET_READ / HARNESS_ROW_BUDGET_WRITE 环境变量
+  source: env
+on_exceed:
+  decision: reject
+  message: "估算返回 {rows} 行，超过 {threshold} 行的预算"
+  suggestion: "加 LIMIT，或用更精确的 WHERE 条件减少扫描"

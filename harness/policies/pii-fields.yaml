@@ -1,0 +1,13 @@
+id: pii-fields
+description: 禁止在 SELECT 中暴露 PII 字段
+applies_to:
+  steps: [read]
+match:
+  type: column-reference
+  columns:
+    - customers.email
+    - customers.phone
+on_match:
+  decision: reject
+  message: "字段 {column} 是 PII，不允许出现在 SELECT 中"
+  suggestion: "改用 customers.id 或聚合后字段"

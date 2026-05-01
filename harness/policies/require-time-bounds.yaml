@@ -1,0 +1,12 @@
+id: require-time-bounds
+description: orders 表的查询必须带 WHERE 时间过滤
+applies_to:
+  steps: [read]
+match:
+  type: table-without-where
+  tables:
+    - orders
+on_match:
+  decision: reject
+  message: "对 {table} 的查询缺少 WHERE 时间过滤，会扫全表"
+  suggestion: "加上 WHERE ordered_at >= ? AND ordered_at < ? 之类的时间范围"
