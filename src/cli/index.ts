@@ -8,8 +8,12 @@
 
 import { Command } from "commander"
 import { getConfig } from "../config.js"
+import { runApprove } from "./approve.js"
 import { runAsk } from "./ask.js"
+import { runReject } from "./reject.js"
+import { runRunsList } from "./runs.js"
 import { runSeed } from "./seed.js"
+import { runShow } from "./show.js"
 
 const NOT_IMPLEMENTED_EXIT_CODE = 64
 
@@ -36,8 +40,9 @@ program
   .command("approve")
   .description("批准一个待审批的运行，执行其 staged plan")
   .argument("<run-id>", "来自 runs/ 目录的运行 id")
-  .action((_runId: string) => {
-    stub("approve", "M6 会落地两阶段审批。")
+  .action(async (runId: string) => {
+    const code = await runApprove(runId)
+    process.exit(code)
   })
 
 program
@@ -45,23 +50,26 @@ program
   .description("拒绝一个待审批的运行，并强制要求理由")
   .argument("<run-id>", "来自 runs/ 目录的运行 id")
   .requiredOption("--reason <text>", "拒绝原因（必填）")
-  .action((_runId: string, _opts: { reason: string }) => {
-    stub("reject", "M6 会落地两阶段拒绝。")
+  .action(async (runId: string, opts: { reason: string }) => {
+    const code = await runReject(runId, opts.reason)
+    process.exit(code)
   })
 
 program
   .command("runs")
   .description("列出最近的运行（id、状态、意图摘要、时间）")
   .action(() => {
-    stub("runs", "M6 会读取 runs/ 目录列出运行。")
+    const code = runRunsList()
+    process.exit(code)
   })
 
 program
   .command("show")
   .description("打印某个运行的 report.md")
   .argument("<run-id>", "来自 runs/ 目录的运行 id")
-  .action((_runId: string) => {
-    stub("show", "M7 会把 runs/<id>/report.md 输出到 stdout。")
+  .action((runId: string) => {
+    const code = runShow(runId)
+    process.exit(code)
   })
 
 program
