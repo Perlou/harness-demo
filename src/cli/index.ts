@@ -8,6 +8,7 @@
 
 import { Command } from "commander"
 import { getConfig } from "../config.js"
+import { runSeed } from "./seed.js"
 
 const NOT_IMPLEMENTED_EXIT_CODE = 64
 
@@ -71,9 +72,9 @@ program
 
 program
   .command("seed")
-  .description("Initialize or reset the demo SQLite database")
+  .description("Initialize or reset the demo SQLite database with deterministic fixture data")
   .action(() => {
-    stub("seed", "M1 will populate ./data/demo.sqlite with deterministic seed data.")
+    runSeed()
   })
 
 function stub(command: string, note: string): void {
