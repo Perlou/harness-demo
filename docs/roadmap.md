@@ -1,24 +1,26 @@
 # Harness Demo 开发进度表
 
+> **当前状态：M0–M10 全部完成 ✅**（93 个测试全绿，整体覆盖率 93.89%）
+
 本表按"先骨架后剧本、先离线后联网"的顺序组织里程碑。每个阶段都对应一个可演示的中间形态，避免到最后才能跑通。
 
 ---
 
 ## 阶段总览
 
-| 阶段 | 主题 | 完成标志 |
-|---|---|---|
-| M0 | 项目脚手架 | `pnpm install` 成功，空 CLI 可被调用 |
-| M1 | 业务平面（DB + seed） | `harness seed` 生成稳定 SQLite |
-| M2 | 控制平面契约 | `harness/contracts/*.schema.ts` 完成，类型导出 |
-| M3 | Pipeline 骨架 + Trace | 一个 Demo Planner 写死返回的 happy path 可跑完整 5 阶段，产出 `runs/<id>/` |
-| M4 | Schema / Policy / Scenario 检查 | 所有 yaml 工件就位，三道检查独立可测 |
-| M5 | Demo Planner 完整剧本 | 4 个出厂场景全部跑通 |
-| M6 | 审批两阶段命令 | `ask` → `approve`/`reject` 流程跑通 |
-| M7 | Report 渲染 | `report.md` 人类可读 |
-| M8 | Live Mode | OpenAI 适配器完成，与 Demo Mode 共用下游 pipeline |
-| M9 | 测试与文档收尾 | 4 个 e2e 测试 + 阶段单测全绿；README 与 CONCEPT 走查通过 |
-| M10 | 演示打包 | `scripts/demo-walkthrough.sh` 一键跑完 |
+| 阶段 | 主题 | 完成标志 | 状态 | Commit |
+|---|---|---|---|---|
+| M0 | 项目脚手架 | `pnpm install` 成功，空 CLI 可被调用 | ✅ | `5dc3acc` |
+| M1 | 业务平面（DB + seed） | `harness seed` 生成稳定 SQLite | ✅ | `0dce9d2` |
+| M2 | 控制平面契约 | `harness/contracts/*.schema.ts` 完成，类型导出 | ✅ | `fc4f235` |
+| M3 | Pipeline 骨架 + Trace | 一个 Demo Planner 写死返回的 happy path 可跑完整 5 阶段，产出 `runs/<id>/` | ✅ | `81b5f03` |
+| M4 | Schema / Policy / Scenario 检查 | 所有 yaml 工件就位，三道检查独立可测 | ✅ | `21047dc` |
+| M5 | Demo Planner 完整剧本 | 4 个出厂场景全部跑通 | ✅ | `865c772` |
+| M6 | 审批两阶段命令 | `ask` → `approve`/`reject` 流程跑通 | ✅ | `232b573` |
+| M7 | Report 渲染 | `report.md` 人类可读 | ✅ | `716d25f` |
+| M8 | Live Mode | OpenAI 适配器完成，与 Demo Mode 共用下游 pipeline | ✅ | `77d4859` |
+| M9 | 测试与文档收尾 | 4 个 e2e 测试 + 阶段单测全绿；README 与 CONCEPT 走查通过 | ✅ | _M9-M10 合并_ |
+| M10 | 演示打包 | `scripts/demo-walkthrough.sh` 一键跑完 | ✅ | _M9-M10 合并_ |
 
 ---
 

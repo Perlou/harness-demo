@@ -3,6 +3,8 @@
 > 一个用来理解 **Harness Engineering** 的最小可运行 demo。
 > 业务功能故意保持简单（自然语言 → SQL → 查电商订单库），主角是控制平面。
 
+**状态**：M0–M10 完成，93 个测试全绿，整体覆盖率 93.89%。
+
 如果你想先理解概念，请直接读 [`CONCEPT.md`](./CONCEPT.md)。
 如果你想理解这个仓库的结构和约束，请读 [`CLAUDE.md`](./CLAUDE.md) 与 [`docs/architecture.md`](./docs/architecture.md)。
 
@@ -55,6 +57,15 @@ cat runs/*/report.md | head -40        # 人类可读报告
 cat runs/*/trace.jsonl | head          # 完整事件流
 ```
 
+### 一键演示 4 个出厂剧本
+
+```bash
+pnpm walkthrough
+```
+
+会自动重置环境，依次跑 happy path / PII 拦截 / 缺时间过滤 / 写操作审批
+4 个剧本，并演示 approve 流程。输出排版好可直接做 talk 材料。
+
 ---
 
 ## 四个出厂剧本
@@ -62,7 +73,7 @@ cat runs/*/trace.jsonl | head          # 完整事件流
 每个剧本都对应一份可被反复演示的 trace 工件。一键跑完：
 
 ```bash
-bash scripts/demo-walkthrough.sh
+pnpm walkthrough
 ```
 
 或者手动一个一个跑：
