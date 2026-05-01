@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Thin wrapper so installed `harness` binary works the same as `pnpm harness`.
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec npx --yes tsx "$DIR/src/cli/index.ts" "$@"

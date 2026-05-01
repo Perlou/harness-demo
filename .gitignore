@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Local data
+data/*.sqlite
+data/*.sqlite-*
+
+# Run artifacts (gitignored except .gitkeep)
+runs/*
+!runs/.gitkeep
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+
+# .claude
+.claude
