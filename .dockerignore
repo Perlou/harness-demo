@@ -1,0 +1,35 @@
+# 避免无关文件进入构建上下文 —— 显著减小镜像体积、加速构建。
+
+# 依赖与构建产物
+node_modules
+dist
+.pnpm-store
+
+# 本地 runtime 数据（容器里会用 VOLUME 重新生成）
+runs/*
+!runs/.gitkeep
+data
+coverage
+.nyc_output
+
+# 工具元数据
+.git
+.github
+.claude
+.idea
+.vscode
+.editorconfig
+
+# 文档与脚本不进镜像（容器里只跑 CLI；docs 通过 GitHub 阅读）
+docs
+tests
+scripts/demo-walkthrough.sh
+scripts/reset.sh
+
+# 配置 / 日志
+.env
+.env.*
+*.log
+
+# OS
+.DS_Store

@@ -1,0 +1,30 @@
+# Harness Demo 本地容器演示。
+#
+# 用法：
+#   docker compose run --rm harness mode
+#   docker compose run --rm harness seed
+#   docker compose run --rm harness ask "上个月销售前 5 的产品"
+#   docker compose run --rm -e HARNESS_MODE=live -e OPENAI_API_KEY=$KEY harness ask "..."
+#
+# 默认 build 自当前目录的 Dockerfile；也可以改用已发布镜像：
+#   image: ghcr.io/<owner>/harness-demo:latest
+# 然后 `docker compose pull && docker compose run --rm harness ...`
+
+services:
+  harness:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: harness-demo:local
+    # CLI 形态：每次调用都是 oneshot，不需要 long-running 进程
+    # tty 让 ANSI 颜色在 walkthrough 等场景下保留
+    tty: true
+    volumes:
+      - ./runs:/app/runs
+      - ./data:/app/data
+    environment:
+      HARNESS_MODE: ${HARNESS_MODE:-demo}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HARNESS_LIVE_MODEL: ${HARNESS_LIVE_MODEL:-gpt-4o-mini}
+      HARNESS_ROW_BUDGET_READ: ${HARNESS_ROW_BUDGET_READ:-10000}
+      HARNESS_ROW_BUDGET_WRITE: ${HARNESS_ROW_BUDGET_WRITE:-1000}
