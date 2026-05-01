@@ -32,6 +32,30 @@ harness ask "<自然语言问题>"
 
 ---
 
+## 安装
+
+发布产物有两种形态。完整发布与维护文档见 [`docs/deployment.md`](./docs/deployment.md)。
+
+### npm（需要 Node 20+）
+
+```bash
+npm install -g @your-scope/harness-demo
+harness ask "上个月销售前 5 的产品"
+```
+
+### Docker（不依赖宿主机 Node，多架构 amd64 + arm64）
+
+```bash
+docker run --rm -v "$PWD/data:/app/data" -v "$PWD/runs:/app/runs" \
+  ghcr.io/your-scope/harness-demo:latest ask "上个月销售前 5 的产品"
+```
+
+### 本地开发 / 演示
+
+`git clone` 后走五分钟上手，下面那一段。
+
+---
+
 ## 五分钟上手
 
 ### 先决条件
@@ -176,6 +200,7 @@ docs/            requirements / architecture / roadmap
 | [`docs/requirements.md`](./docs/requirements.md) | 功能需求、用户场景、验收标准 |
 | [`docs/architecture.md`](./docs/architecture.md) | 技术架构、目录结构、契约定义 |
 | [`docs/roadmap.md`](./docs/roadmap.md) | 开发进度表（M0–M10） |
+| [`docs/deployment.md`](./docs/deployment.md) | 安装方式、发布流程、CI/CD 流水线 |
 | [`CLAUDE.md`](./CLAUDE.md) | 给 AI 协作者的工作约束 |
 
 ---
