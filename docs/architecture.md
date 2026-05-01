@@ -78,75 +78,97 @@
 harness-demo/
 ├─ harness/                                控制平面（数据 / 工件，无代码逻辑）
 │  ├─ contracts/
-│  │  ├─ intent.schema.ts                  Zod: IntentSpec
-│  │  ├─ plan.schema.ts                    Zod: Plan / SqlAction
-│  │  ├─ evaluation.schema.ts              Zod: EvaluationResult / TraceEvent
-│  │  └─ README.md
+│  │  ├─ intent.schema.ts                  Zod: IntentSpec / Goal / RiskLevel / Scope / TimeWindow
+│  │  ├─ plan.schema.ts                    Zod: Plan / Action / SqlAction
+│  │  ├─ evaluation.schema.ts              Zod: CheckFinding / CheckOutcome / EvaluationResult
+│  │  │                                    + TraceEvent / TraceStage / RunStatus / isTerminal
+│  │  ├─ index.ts                          re-export 总入口
+│  │  └─ README.md                         契约语义边界 + 演进规则
 │  ├─ policies/
-│  │  ├─ pii-fields.yaml
-│  │  ├─ require-time-bounds.yaml
-│  │  ├─ destructive-needs-approval.yaml
-│  │  └─ README.md
+│  │  ├─ pii-fields.yaml                   column-reference matcher
+│  │  ├─ require-time-bounds.yaml          table-without-where matcher
+│  │  ├─ destructive-needs-approval.yaml   statement-kind matcher
+│  │  └─ README.md                         规则总结 + matcher 注册表
 │  ├─ scenarios/
-│  │  └─ row-budget.yaml
+│  │  ├─ row-budget.yaml                   explain-row-estimate scenario
+│  │  └─ README.md                         scenario 类型注册表
 │  └─ prompts/
-│     ├─ intent.tmpl
-│     └─ planner.tmpl
+│     ├─ intent.tmpl                       占位（未来 LLM intent 用）
+│     └─ planner.tmpl                      Live Mode plan 生成 prompt
 │
 ├─ src/
-│  ├─ pipeline/                            harness 引擎本体
-│  │  ├─ engine.ts                         linear pipeline composition
-│  │  ├─ intent.ts                         自然语言 → IntentSpec
-│  │  ├─ planner.ts                        IntentSpec → Plan（dispatch）
-│  │  ├─ schemaCheck.ts                    SQL vs SQLite 真 schema
-│  │  ├─ policyCheck.ts                    加载 policies/*.yaml 评估
-│  │  ├─ scenarioEval.ts                   加载 scenarios/*.yaml + EXPLAIN
-│  │  ├─ approval.ts                       写入 runs/<id>/，等待人工
-│  │  └─ executor.ts                       事务执行 + 回滚
+│  ├─ pipeline/                            harness 引擎本体（薄壳，无业务规则）
+│  │  ├─ engine.ts                         linear pipeline composition + finalize
+│  │  ├─ context.ts                        RunContext 接口
+│  │  ├─ intent.ts                         自然语言 → IntentSpec（detectCase 分类）
+│  │  ├─ planner.ts                        Planner 协议 + dispatch（demo / live）
+│  │  ├─ sqlInspect.ts                     正则 SQL 检查器（动词/表/列/WHERE/LIMIT）
+│  │  ├─ schemaCheck.ts                    SQL vs sqlite_master 真 schema
+│  │  ├─ policyCheck.ts                    加载 policies/*.yaml + matcher 注册表
+│  │  ├─ scenarioEval.ts                   加载 scenarios/*.yaml + 行数探查
+│  │  ├─ approval.ts                       决策表（auto / pending / rejected）
+│  │  └─ executor.ts                       单事务执行 + audit_log + 回滚
 │  ├─ planners/
-│  │  ├─ demo.ts                           确定性规则引擎 + 故障注入
-│  │  └─ live.ts                           OpenAI 适配器
+│  │  ├─ cases.ts                          DemoCase 关键词探测器（intent 与 demo 共用）
+│  │  ├─ demo.ts                           4 个出厂剧本 case-based dispatch
+│  │  └─ live.ts                           OpenAI 适配器 + 测试钩子
 │  ├─ db/
-│  │  ├─ schema.sql                        建表 DDL
-│  │  ├─ seed.ts                           种子数据生成
+│  │  ├─ schema.sql                        6 张表 DDL
+│  │  ├─ seed.ts                           Mulberry32 PRNG 确定性 seed
 │  │  └─ client.ts                         better-sqlite3 单例
 │  ├─ trace/
-│  │  ├─ events.ts                         TraceEvent 类型与 emitter
-│  │  └─ writer.ts                         JSONL writer + report.md 合成
+│  │  ├─ events.ts                         TraceEmitter + generateRunId
+│  │  ├─ writer.ts                         RunArtifacts 工件门面
+│  │  └─ report.ts                         report.md 渲染器（6 大节）
 │  ├─ cli/
-│  │  ├─ index.ts                          commander 入口
-│  │  ├─ ask.ts
-│  │  ├─ approve.ts
-│  │  ├─ reject.ts
-│  │  ├─ runs.ts
-│  │  ├─ show.ts
-│  │  ├─ mode.ts
-│  │  └─ seed.ts
-│  └─ config.ts                            mode、API key、阈值
+│  │  ├─ index.ts                          commander 入口（注册 7 个子命令）
+│  │  ├─ ask.ts                            提交意图，跑 pipeline
+│  │  ├─ approve.ts                        两阶段批准 + 重写 report.md
+│  │  ├─ reject.ts                         强制 reason + 重写 report.md
+│  │  ├─ runs.ts                           列出运行
+│  │  ├─ show.ts                           打印 report.md（缺失时现场合成）
+│  │  └─ seed.ts                           初始化数据库
+│  └─ config.ts                            Zod 校验的 env config 单例
 │
 ├─ runs/                                   运行工件（gitignored）
 │  └─ .gitkeep
 │
-├─ tests/
-│  ├─ pipeline/                            阶段单测
-│  ├─ scenarios/                           4 个端到端剧本测试
-│  └─ fixtures/
+├─ tests/                                  98 个用例
+│  ├─ contracts/                           契约 schema 单测
+│  ├─ pipeline/                            阶段单测（含 sqlInspect / approval）
+│  ├─ scenarios/                           e2e 剧本测试（含 _fixture.ts 工具）
+│  ├─ db/                                  seed 确定性验证
+│  └─ cli.smoke.test.ts                    config 加载冒烟
 │
 ├─ docs/
-│  ├─ requirements.md
-│  ├─ architecture.md
-│  └─ roadmap.md
+│  ├─ requirements.md                      需求 / 用户场景 / 验收标准
+│  ├─ architecture.md                      技术架构（本文档）
+│  ├─ roadmap.md                           开发进度表
+│  └─ deployment.md                        发布流程 + CI/CD 流水线
 │
 ├─ scripts/
-│  ├─ demo-walkthrough.sh                  一键跑完 4 个剧本
-│  └─ reset.sh
+│  ├─ demo-walkthrough.sh                  一键跑完 4 个剧本 + approve
+│  └─ reset.sh                             清 runs + 重建 SQLite
 │
-├─ CONCEPT.md
-├─ CLAUDE.md
-├─ README.md
-├─ package.json
+├─ .github/
+│  └─ workflows/
+│     ├─ ci.yml                            push & PR：typecheck/test/coverage + docker smoke
+│     └─ release.yml                       v* tag：npm publish + GHCR multi-arch
+│
+├─ Dockerfile                              单阶段 node:20-slim + tsx runtime
+├─ .dockerignore                           排除 node_modules / runs / data / docs / tests
+├─ docker-compose.yml                      本地一键容器演示
+├─ CONCEPT.md                              Harness Engineering 知识深入解析
+├─ CLAUDE.md                               给 AI 协作者的工作约束
+├─ README.md                               项目入口
+├─ LICENSE                                 MIT
+├─ package.json                            scoped npm 包定义 + scripts
+├─ pnpm-lock.yaml
 ├─ tsconfig.json
-└─ .env.example
+├─ vitest.config.ts                        测试 + 覆盖率配置
+├─ .env.example                            所有 runtime 旋钮
+├─ .editorconfig
+└─ .gitignore
 ```
 
 ---
@@ -559,3 +581,108 @@ HARNESS_ROW_BUDGET_WRITE=1000
 - SQL 通过 better-sqlite3 prepared statement 执行
 - yaml 加载用 `js-yaml` safeLoad
 - 审批命令检查 run 状态防止重放（已 committed 不能再 approve）
+
+---
+
+## 15. 发布管线（CI/CD）
+
+发布与运行时使用相同的"声明式工件"理念 —— `.github/workflows/*.yml` 与
+`harness/policies/*.yaml` 在范式上同构：都是把"系统该做什么决定"显式写
+进仓库。本节描述发布管线的形态，详细操作手册在
+[`docs/deployment.md`](./deployment.md)。
+
+### 15.1 分发产物
+
+两种形态，覆盖 99% 安装场景：
+
+- **npm 全局包**：`@your-scope/harness-demo`，scoped 公开，含 `bin/harness`
+  入口。`pnpm publish` 走 OIDC + provenance attestation。
+- **Docker 镜像**：`ghcr.io/<owner>/harness-demo`，多架构（linux/amd64 +
+  linux/arm64）。镜像内 `tsx` 直接跑 TS 源码，避免编译路径解析问题。
+
+单文件二进制曾在最初设想中，因 better-sqlite3 native 模块与 bun --compile
+的虚拟文件系统不兼容而放弃。决策原委见 `docs/deployment.md`。
+
+### 15.2 两条 GitHub Actions
+
+```
+.github/workflows/
+├─ ci.yml          push & PR 触发
+└─ release.yml     push v* tag 触发
+```
+
+#### ci.yml（每次 PR / push）
+
+两个并行 job，让 main 分支永远是绿的：
+
+```
+test                          docker-smoke
+─────                         ────────────
+pnpm install --frozen-lockfile  docker buildx build (amd64, no push)
+pnpm typecheck                  docker run mode    → "demo"
+pnpm test:coverage              docker run --help  → not crash
+upload coverage artifact        docker run seed    → fixture loaded
+```
+
+#### release.yml（push v* tag）
+
+```
+push tag v0.1.1
+       │
+       ▼
+  ┌─────────┐
+  │  check  │   typecheck + test，gate
+  └────┬────┘
+       │
+       ▼
+  ┌──────────────────┐
+  │  verify-version  │   tag (去 v 前缀) === package.json.version
+  └────┬─────────────┘
+       │
+       ▼
+ ┌───────┐  ┌─────────┐
+ │  npm  │  │ docker  │   并行
+ └───┬───┘  └────┬────┘
+     │           │
+     └─────┬─────┘
+           ▼
+      ┌─────────┐
+      │ release │   git log → RELEASE_NOTES.md → GitHub Release
+      └─────────┘
+```
+
+### 15.3 一次性准备
+
+发布前要做的事（详见 `docs/deployment.md` §发布流程）：
+
+1. 把 `package.json` 里 `@your-scope` 替换成真正的 npm scope
+2. GitHub 仓库 Secrets 加 `NPM_TOKEN`（npm Automation token）
+3. Settings → Actions → Workflow permissions 设为 *Read and write*
+
+### 15.4 常规发版
+
+```bash
+pnpm version patch           # bump + commit + git tag
+git push --follow-tags       # 触发 release.yml
+```
+
+完成后：
+- `https://www.npmjs.com/package/@your-scope/harness-demo` 出现新版本
+- `ghcr.io/<owner>/harness-demo:0.1.1` 可被 pull
+- GitHub Releases 页面新增带 changelog 的 Release
+
+### 15.5 教学呼应
+
+`harness/policies/*.yaml`（业务控制平面）与 `.github/workflows/*.yml`
+（发布控制平面）在范式上等价：
+
+| 维度 | policies/ | workflows/ |
+|---|---|---|
+| 形态 | 声明式 yaml | 声明式 yaml |
+| 解释器 | `policyCheck.ts` 中封闭注册表 | GitHub Actions runtime |
+| 改一行 yaml 的影响 | 系统业务行为变化 | 系统发布行为变化 |
+| 演化史 | git log on `policies/` | git log on `workflows/` |
+| 工程师价值 | 写规则 | 写流水线 |
+
+这两层加起来构成完整的"控制平面"，是 harness engineering 三条核心
+理念在不同抽象层次的一致呈现。

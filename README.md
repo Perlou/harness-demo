@@ -3,7 +3,7 @@
 > 一个用来理解 **Harness Engineering** 的最小可运行 demo。
 > 业务功能故意保持简单（自然语言 → SQL → 查电商订单库），主角是控制平面。
 
-**状态**：M0–M10 完成，93 个测试全绿，整体覆盖率 93.89%。
+**状态**：M0–M10 + Stage A 发布管线全部完成，98 个测试全绿，整体覆盖率 93.89%。
 
 如果你想先理解概念，请直接读 [`CONCEPT.md`](./CONCEPT.md)。
 如果你想理解这个仓库的结构和约束，请读 [`CLAUDE.md`](./CLAUDE.md) 与 [`docs/architecture.md`](./docs/architecture.md)。
@@ -197,9 +197,10 @@ docs/            requirements / architecture / roadmap
 | 文档 | 内容 |
 |---|---|
 | [`CONCEPT.md`](./CONCEPT.md) | Harness Engineering 从零开始的深入解析 |
+| [`CHANGELOG.md`](./CHANGELOG.md) | 版本变化记录 |
 | [`docs/requirements.md`](./docs/requirements.md) | 功能需求、用户场景、验收标准 |
-| [`docs/architecture.md`](./docs/architecture.md) | 技术架构、目录结构、契约定义 |
-| [`docs/roadmap.md`](./docs/roadmap.md) | 开发进度表（M0–M10） |
+| [`docs/architecture.md`](./docs/architecture.md) | 技术架构、目录结构、契约定义、发布管线 |
+| [`docs/roadmap.md`](./docs/roadmap.md) | 开发进度表（M0–M10 + Stage A） |
 | [`docs/deployment.md`](./docs/deployment.md) | 安装方式、发布流程、CI/CD 流水线 |
 | [`CLAUDE.md`](./CLAUDE.md) | 给 AI 协作者的工作约束 |
 

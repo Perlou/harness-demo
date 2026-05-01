@@ -1,12 +1,15 @@
 # Harness Demo 开发进度表
 
-> **当前状态：M0–M10 全部完成 ✅**（93 个测试全绿，整体覆盖率 93.89%）
+> **当前状态：M0–M10 全部完成 ✅ + Stage A 发布管线 ✅**
+> 98 个测试全绿，整体覆盖率 93.89%（pipeline 91.26%）
 
 本表按"先骨架后剧本、先离线后联网"的顺序组织里程碑。每个阶段都对应一个可演示的中间形态，避免到最后才能跑通。
 
 ---
 
 ## 阶段总览
+
+### 主线（M0–M10）
 
 | 阶段 | 主题 | 完成标志 | 状态 | Commit |
 |---|---|---|---|---|
@@ -20,7 +23,18 @@
 | M7 | Report 渲染 | `report.md` 人类可读 | ✅ | `716d25f` |
 | M8 | Live Mode | OpenAI 适配器完成，与 Demo Mode 共用下游 pipeline | ✅ | `77d4859` |
 | M9 | 测试与文档收尾 | 4 个 e2e 测试 + 阶段单测全绿；README 与 CONCEPT 走查通过 | ✅ | _M9-M10 合并_ |
-| M10 | 演示打包 | `scripts/demo-walkthrough.sh` 一键跑完 | ✅ | _M9-M10 合并_ |
+| M10 | 演示打包 | `scripts/demo-walkthrough.sh` 一键跑完 | ✅ | `0a7dd52` |
+
+### Stage A · 发布管线（D0–D5）
+
+| 阶段 | 主题 | 完成标志 | 状态 | Commit |
+|---|---|---|---|---|
+| D0 | Docker | Dockerfile + compose 可本地一键容器演示 | ✅ | `b07378f` |
+| D1 | npm 发布准备 | scoped 包名 + LICENSE + files allowlist + provenance | ✅ | `fcbbde8` |
+| D2 | 单文件二进制 | _放弃_：better-sqlite3 native 模块与 bun --compile 不兼容；决策记入 `docs/deployment.md` | ⊘ | _N/A_ |
+| D3 | Release 工作流 | tag 驱动 npm publish + GHCR multi-arch + GH Release | ✅ | `c151eba` |
+| D4 | CI 增强 | coverage 上传 + Docker build smoke test | ✅ | `73951c5` |
+| D5 | 发布文档 | `docs/deployment.md` + README 安装章节 | ✅ | `e06a4ed` |
 
 ---
 

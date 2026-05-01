@@ -112,17 +112,36 @@ tests/          pipeline 单测 + scenarios e2e 测试
 ## 常用命令
 
 ```bash
-pnpm install              # 安装
-pnpm seed                 # 生成 SQLite 种子数据
+pnpm install              # 安装依赖
+pnpm seed                 # 生成 / 重置 SQLite 种子数据
 pnpm harness ask "<问题>"  # 跑一次完整 pipeline
 pnpm harness approve <id> # 批准待审批运行
 pnpm harness reject <id> --reason "..."
 pnpm harness runs         # 列出运行
 pnpm harness show <id>    # 打印 report.md
 pnpm test                 # 跑测试
-pnpm tsc --noEmit         # 类型检查
-bash scripts/demo-walkthrough.sh  # 演示四个剧本
+pnpm test:coverage        # 跑测试 + 输出覆盖率
+pnpm typecheck            # 类型检查
+pnpm walkthrough          # 一键演示 4 个剧本（含 approve）
+pnpm reset                # 清 runs/ + 重新 seed
 ```
+
+容器化运行（不依赖宿主机 Node）：
+
+```bash
+docker compose run --rm harness mode
+docker compose run --rm harness seed
+docker compose run --rm harness ask "上个月销售前 5 的产品"
+```
+
+发布（仅维护者）：
+
+```bash
+pnpm version patch         # bump + commit + git tag
+git push --follow-tags     # 触发 .github/workflows/release.yml
+```
+
+完整发布流程见 `docs/deployment.md`。
 
 ## 当你不确定时
 
@@ -138,4 +157,5 @@ bash scripts/demo-walkthrough.sh  # 演示四个剧本
 3. `docs/architecture.md §1–§4` —— 架构骨架与 pipeline
 4. `harness/contracts/` —— 实际契约
 5. `harness/policies/` —— 实际规则
-6. `docs/roadmap.md` —— 当前进度
+6. `docs/roadmap.md` —— 当前进度（M0–M10 全部完成 + Stage A 发布管线）
+7. `docs/deployment.md` —— 发布上线流程（按需）
