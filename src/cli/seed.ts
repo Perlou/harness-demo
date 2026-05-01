@@ -1,6 +1,5 @@
 /**
- * `harness seed` — initialize / reset the demo SQLite database with
- * deterministic fixture data.
+ * `harness seed` —— 用确定性的 fixture 数据初始化或重置 demo SQLite 库。
  */
 
 import { closeDb } from "../db/client.js"
@@ -20,7 +19,7 @@ export function runSeed(): void {
     `  inventory rows  : ${summary.inventory}`,
     `  orders          : ${summary.orders}`,
     `  order_items     : ${summary.orderItems}`,
-    `  audit_log       : 0 (populated at runtime)`,
+    `  audit_log       : 0（运行时由 executor 写入）`,
     "",
     `  earliest order  : ${summary.earliestOrderedAt}`,
     `  latest order    : ${summary.latestOrderedAt}`,

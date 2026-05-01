@@ -1,15 +1,13 @@
--- Business plane schema. Owned exclusively by src/db/.
--- The harness control plane MUST NOT reference these tables directly except
--- through src/pipeline/executor.ts.
+-- 业务平面 schema。仅由 src/db/ 持有。
+-- harness 控制平面禁止直接引用这些表，写入只能通过 src/pipeline/executor.ts。
 --
--- All timestamps are ISO 8601 strings (TEXT) for human readability and easy
--- diffing in trace artifacts.
+-- 所有时间戳都用 ISO 8601 字符串（TEXT）：人类可读、便于在 trace 工件中 diff。
 
 PRAGMA foreign_keys = ON;
 
 -------------------------------------------------------------------------------
--- customers
--- email and phone are PII (see harness/policies/pii-fields.yaml).
+-- customers（客户）
+-- email 与 phone 是 PII，由 harness/policies/pii-fields.yaml 拦截。
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS customers (
   id           INTEGER PRIMARY KEY,
@@ -20,7 +18,7 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 -------------------------------------------------------------------------------
--- products
+-- products（商品）
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS products (
   id           INTEGER PRIMARY KEY,
@@ -31,9 +29,9 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 -------------------------------------------------------------------------------
--- orders
--- Queries against this table MUST include a time bound on ordered_at
--- (enforced by harness/policies/require-time-bounds.yaml).
+-- orders（订单）
+-- 该表的查询必须带 ordered_at 时间范围，由
+-- harness/policies/require-time-bounds.yaml 强制。
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
   id           INTEGER PRIMARY KEY,
@@ -49,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_customer   ON orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status     ON orders(status);
 
 -------------------------------------------------------------------------------
--- order_items
+-- order_items（订单行）
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS order_items (
   id           INTEGER PRIMARY KEY,
@@ -63,7 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_items_order   ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_items_product ON order_items(product_id);
 
 -------------------------------------------------------------------------------
--- inventory
+-- inventory（库存）
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS inventory (
   product_id   INTEGER PRIMARY KEY REFERENCES products(id),
@@ -73,9 +71,8 @@ CREATE TABLE IF NOT EXISTS inventory (
 );
 
 -------------------------------------------------------------------------------
--- audit_log
--- Append-only. Written exclusively by src/pipeline/executor.ts after every
--- write operation that passed all checks AND was approved.
+-- audit_log（审计日志）
+-- append-only。仅由 src/pipeline/executor.ts 在「检查全过且已审批」之后写入。
 -------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_log (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,

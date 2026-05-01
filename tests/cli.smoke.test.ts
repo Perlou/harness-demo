@@ -1,20 +1,19 @@
 /**
- * M0 smoke test: prove the CLI can be loaded and reports its registered
- * subcommands. We don't actually execute argv parsing here — we just import
- * config to make sure the env-validation path doesn't blow up on defaults.
+ * M0 冒烟测试：证明 CLI 模块能被加载、config 解析路径不会因默认值崩溃。
+ * 这里不真正跑 argv 解析——只是 import config，确保校验路径走得通。
  *
- * Real subcommand behaviour is exercised in later milestones.
+ * 真正的子命令行为在后续里程碑测试。
  */
 
 import { describe, it, expect, beforeEach } from "vitest"
 import { getConfig, resetConfig } from "../src/config.js"
 
-describe("M0 — config loading", () => {
+describe("M0 — config 加载", () => {
   beforeEach(() => {
     resetConfig()
   })
 
-  it("loads with safe defaults when env is empty", () => {
+  it("env 为空时使用安全默认值", () => {
     const original = { ...process.env }
     delete process.env.HARNESS_MODE
     delete process.env.HARNESS_RUNS_DIR
@@ -36,11 +35,11 @@ describe("M0 — config loading", () => {
     }
   })
 
-  it("rejects an unknown HARNESS_MODE", () => {
+  it("拒绝未知的 HARNESS_MODE", () => {
     const original = process.env.HARNESS_MODE
     process.env.HARNESS_MODE = "wat"
     try {
-      expect(() => getConfig()).toThrow(/Invalid environment configuration/)
+      expect(() => getConfig()).toThrow(/环境变量配置不合法/)
     } finally {
       if (original === undefined) delete process.env.HARNESS_MODE
       else process.env.HARNESS_MODE = original
@@ -48,7 +47,7 @@ describe("M0 — config loading", () => {
     }
   })
 
-  it("coerces numeric budgets from strings", () => {
+  it("把字符串形式的数值预算 coerce 成 number", () => {
     const original = { ...process.env }
     process.env.HARNESS_ROW_BUDGET_READ = "500"
     process.env.HARNESS_ROW_BUDGET_WRITE = "50"

@@ -1,12 +1,11 @@
 /**
- * Typed runtime configuration loaded from environment variables.
+ * 从环境变量加载并校验后的运行时配置。
  *
- * The config object is the single entry point through which the rest of the
- * codebase reads runtime knobs. We resolve it once at startup so that the
- * downstream pipeline never reaches into `process.env` directly.
+ * 整个代码库统一通过这里读取运行时旋钮，下游 pipeline 不允许直接访问
+ * `process.env`。配置在启动时一次性解析并缓存。
  *
- * NOTE: this file is part of the harness ENGINE, not the harness CONTRACTS.
- * Contracts (Zod schemas) live under `harness/contracts/`.
+ * 注意：本文件属于 harness ENGINE，不属于 harness CONTRACTS。
+ * 契约（Zod schema）放在 `harness/contracts/`。
  */
 
 import { config as loadDotenv } from "dotenv"
@@ -44,7 +43,7 @@ function fromEnv(): HarnessConfig {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
       .join("\n")
-    throw new Error(`Invalid environment configuration:\n${issues}`)
+    throw new Error(`环境变量配置不合法：\n${issues}`)
   }
 
   return parsed.data
@@ -53,8 +52,8 @@ function fromEnv(): HarnessConfig {
 let _cached: HarnessConfig | null = null
 
 /**
- * Resolve the typed config once and cache it. Tests can call `resetConfig()`
- * to force a re-read after mutating `process.env`.
+ * 获取已解析并缓存的配置；首次调用时执行解析。
+ * 测试可以通过 `resetConfig()` 在修改 `process.env` 后强制重新解析。
  */
 export function getConfig(): HarnessConfig {
   if (_cached === null) _cached = fromEnv()
@@ -66,18 +65,18 @@ export function resetConfig(): void {
 }
 
 /**
- * Assert the config is valid for the requested mode. Called by CLI commands
- * that actually need to run the pipeline (e.g. `ask`).
+ * 检查当前配置是否满足某个模式的运行前提。被 CLI 中真正会跑 pipeline
+ * 的子命令（例如 `ask`）调用。
  */
 export function assertReadyFor(mode: HarnessMode): void {
   const cfg = getConfig()
   if (cfg.mode !== mode && mode === "live") {
-    return // The CLI may want to validate even when not the active mode.
+    return // CLI 在非 live 模式下也允许预校验。
   }
   if (cfg.mode === "live" && !cfg.openaiApiKey) {
     throw new Error(
-      "HARNESS_MODE=live requires OPENAI_API_KEY to be set. " +
-        "Switch to HARNESS_MODE=demo or provide an API key.",
+      "HARNESS_MODE=live 需要设置 OPENAI_API_KEY。" +
+        "请改回 HARNESS_MODE=demo，或提供 API key。",
     )
   }
 }

@@ -1,29 +1,27 @@
 /**
- * Deterministic seed for the demo SQLite database.
+ * demo SQLite 数据库的确定性 seed。
  *
- * Determinism guarantees (verified by tests/db/seed.test.ts):
- *   - Identical SEED_SALT → identical row counts, identical sums, identical
- *     min/max timestamps.
- *   - The output of `seed()` does NOT depend on wall-clock time. We anchor
- *     "now" to a fixed reference date so that demo runs against the seeded
- *     data are stable.
+ * 确定性保证（由 tests/db/seed.test.ts 验证）：
+ *   - 同一 SEED_SALT → 行数相同、聚合相同、最早/最晚时间戳相同。
+ *   - `seed()` 的输出不依赖 wall-clock 时间。我们把"当前时间"锚定到
+ *     一个固定参考日期，让针对 seed 的演示运行结果稳定。
  *
- * Counts (per docs/roadmap.md M1):
+ * 行数（见 docs/roadmap.md M1）：
  *   - 50  customers
- *   - 20  products  (4 categories × 5 each)
- *   - 200 orders    (spanning 6 months back from the reference date)
+ *   - 20  products  （4 类 × 每类 5 个）
+ *   - 200 orders    （时间跨度回溯 6 个月）
  *   - 500 order_items
- *   - 20  inventory rows (one per product)
- *   - 0   audit_log (populated at runtime by the executor)
+ *   - 20  inventory（每个 product 一行）
+ *   - 0   audit_log（运行时由 executor 写入）
  */
 
 import { resetDb } from "./client.js"
 
-/** Anchored "now" — keeps demo data stable across machines and clocks. */
+/** 锚定的"当前时间"——保证 demo 数据跨机器、跨时钟稳定。 */
 export const REFERENCE_NOW = "2026-05-01T00:00:00.000Z"
 
-/** Salt mixed into the PRNG seed. Bump to regenerate the canonical fixture. */
-const SEED_SALT = 0x484e_5353 // ascii "HNSS"
+/** 混进 PRNG 种子的 salt。要重新生成基线 fixture，bump 这个值即可。 */
+const SEED_SALT = 0x484e_5353 // ASCII "HNSS"
 
 const FIRST_NAMES = [
   "Anna", "Ben", "Cora", "Dan", "Eve", "Felix", "Grace", "Henry",
@@ -75,8 +73,7 @@ interface SeedSummary {
 }
 
 /**
- * Wipe and re-populate the business database. Returns a summary that's used by
- * tests to assert determinism.
+ * 清空并重新填充业务库。返回一份 summary，被测试用来断言确定性。
  */
 export function seed(): SeedSummary {
   const db = resetDb()
@@ -143,12 +140,11 @@ export function seed(): SeedSummary {
   const orderCount = 200
   const targetItemCount = 500
 
-  // Pre-assign each order an item count so the total is exactly targetItemCount.
-  // Each order gets 1..5 items; we draw and then trim/extend to hit the target.
+  // 先给每个订单分配一个行数（1..5），再调整到合计正好 targetItemCount。
   const itemCounts: number[] = []
   for (let i = 0; i < orderCount; i++) itemCounts.push(rngInt(rng, 1, 5))
   let total = itemCounts.reduce((a, b) => a + b, 0)
-  // Adjust to exactly targetItemCount.
+  // 微调到正好等于 targetItemCount。
   while (total !== targetItemCount) {
     const idx = rngInt(rng, 0, orderCount - 1)
     if (total < targetItemCount && itemCounts[idx]! < 8) {
@@ -212,7 +208,7 @@ export function seed(): SeedSummary {
 
 // ---------- helpers ----------
 
-/** Mulberry32: tiny, fast, deterministic 32-bit PRNG. */
+/** Mulberry32：小巧、快速、确定性的 32 位 PRNG。 */
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0
   return () => {

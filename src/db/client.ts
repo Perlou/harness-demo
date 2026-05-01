@@ -1,14 +1,14 @@
 /**
- * Business-plane SQLite client.
+ * 业务平面 SQLite 客户端。
  *
- * Rules:
- *   - The control plane (src/pipeline/*, src/planners/*) MUST NOT import this
- *     module to perform writes — only src/pipeline/executor.ts is allowed to.
- *   - Read access is permitted for schemaCheck.ts (introspect actual schema)
- *     and scenarioEval.ts (EXPLAIN QUERY PLAN).
+ * 边界规则：
+ *   - 控制平面（src/pipeline/*、src/planners/*）禁止通过本模块写业务表，
+ *     写入只能由 src/pipeline/executor.ts 触发。
+ *   - 读访问被允许：schemaCheck.ts 需要内省真实 schema、scenarioEval.ts
+ *     需要跑 EXPLAIN QUERY PLAN。
  *
- * The client is process-singleton. Tests can call `closeDb()` between cases to
- * force a re-open against a different path.
+ * 客户端是进程单例。测试可以通过 `closeDb()` 在用例之间强制重开，从而
+ * 切换到不同的 db 路径。
  */
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
@@ -28,8 +28,7 @@ const SCHEMA_PATH = resolve(
 )
 
 /**
- * Return the singleton database handle, opening it (and ensuring the schema
- * exists) on first use.
+ * 返回单例数据库句柄。首次调用时会打开连接并保证 schema 已应用。
  */
 export function getDb(): DatabaseType {
   const cfg = getConfig()
@@ -52,12 +51,11 @@ export function getDb(): DatabaseType {
 }
 
 /**
- * Drop every business table (NOT audit_log resets too) and re-apply the schema.
- * Used by `harness seed`.
+ * 删除全部业务表（连同 audit_log）并重新应用 schema。供 `harness seed` 使用。
  */
 export function resetDb(): DatabaseType {
   const db = getDb()
-  // Drop in reverse-FK order.
+  // 按外键反向顺序 drop。
   db.exec(`
     DROP TABLE IF EXISTS audit_log;
     DROP TABLE IF EXISTS inventory;
@@ -71,7 +69,7 @@ export function resetDb(): DatabaseType {
 }
 
 /**
- * Close the singleton (for tests / shutdown).
+ * 关闭单例（供测试 / 进程退出使用）。
  */
 export function closeDb(): void {
   if (_db !== null) {

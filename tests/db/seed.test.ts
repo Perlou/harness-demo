@@ -1,9 +1,8 @@
 /**
- * M1 verification: `seed()` is deterministic across repeated invocations.
+ * M1 验证：`seed()` 在重复调用时具有确定性。
  *
- * This is the single most important property of the seed function — it lets us
- * write demo scenarios that always produce the same output, and it's the
- * judgement criterion in docs/roadmap.md M1.
+ * 这是 seed 函数最重要的单一性质——它让我们能写出每次输出都相同的演示
+ * 剧本，也是 docs/roadmap.md M1 的判定标准。
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -33,8 +32,8 @@ afterEach(() => {
   rmSync(tmpRoot, { recursive: true, force: true })
 })
 
-describe("M1 — deterministic seed", () => {
-  it("produces stable row counts and aggregates across two runs", () => {
+describe("M1 — 确定性 seed", () => {
+  it("两次跑出来的行数和聚合完全相同", () => {
     const a = seed()
     const dbA = getDb()
     const ordersA = dbA.prepare("SELECT COUNT(*) AS n FROM orders").get() as { n: number }
@@ -42,7 +41,7 @@ describe("M1 — deterministic seed", () => {
     const sumA = dbA.prepare("SELECT ROUND(SUM(total), 2) AS s FROM orders").get() as { s: number }
     closeDb()
 
-    // Reset DB file and re-seed against a fresh tmp path.
+    // 切到一个新的临时目录，重新 seed。
     rmSync(tmpRoot, { recursive: true, force: true })
     tmpRoot = mkdtempSync(join(tmpdir(), "harness-seed-"))
     process.env.HARNESS_DB_PATH = join(tmpRoot, "demo.sqlite")
@@ -61,7 +60,7 @@ describe("M1 — deterministic seed", () => {
     expect(sumB.s).toBe(sumA.s)
   })
 
-  it("respects target counts from roadmap M1", () => {
+  it("行数符合 roadmap M1 设定的目标", () => {
     const summary = seed()
     expect(summary.customers).toBe(50)
     expect(summary.products).toBe(20)
@@ -70,10 +69,10 @@ describe("M1 — deterministic seed", () => {
     expect(summary.inventory).toBe(20)
   })
 
-  it("does not consult wall-clock time (orders span before REFERENCE_NOW)", () => {
+  it("不依赖 wall-clock，订单时间窗口都早于 REFERENCE_NOW", () => {
     const summary = seed()
     expect(summary.latestOrderedAt <= REFERENCE_NOW).toBe(true)
-    // 6 months ≈ 180 days; allow a tiny margin
+    // 6 个月 ≈ 180 天，留一点余量
     const earliest = new Date(summary.earliestOrderedAt).getTime()
     const ref = new Date(REFERENCE_NOW).getTime()
     const days = (ref - earliest) / (1000 * 60 * 60 * 24)
@@ -81,10 +80,10 @@ describe("M1 — deterministic seed", () => {
     expect(days).toBeLessThanOrEqual(181)
   })
 
-  it("produces valid foreign keys and check constraints", () => {
+  it("外键完整、CHECK 约束全部满足", () => {
     seed()
     const db = getDb()
-    // No order_items reference a non-existent order
+    // 没有 order_items 指向不存在的 order
     const orphanItems = db
       .prepare(
         `SELECT COUNT(*) AS n
@@ -95,7 +94,7 @@ describe("M1 — deterministic seed", () => {
       .get() as { n: number }
     expect(orphanItems.n).toBe(0)
 
-    // Every product has an inventory row
+    // 每个 product 都有对应的 inventory 行
     const missingInv = db
       .prepare(
         `SELECT COUNT(*) AS n
@@ -106,7 +105,7 @@ describe("M1 — deterministic seed", () => {
       .get() as { n: number }
     expect(missingInv.n).toBe(0)
 
-    // No negative totals
+    // 没有负的 total
     const badTotals = db
       .prepare("SELECT COUNT(*) AS n FROM orders WHERE total < 0")
       .get() as { n: number }
