@@ -39,5 +39,9 @@ coverage/
 # Misc
 .cache/
 
-# .claude
-.claude/
+# Claude Code 本地会话设置（per-machine，不要进 git）
+.claude/settings.local.json
+.claude/*.local.json
+
+# npm pack / 临时打包产物
+*.tgz
