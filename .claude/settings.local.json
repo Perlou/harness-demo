@@ -5,7 +5,18 @@
       "Bash(git -C /Users/perlou/Desktop/personal/harness-demo status)",
       "Bash(git -C /Users/perlou/Desktop/personal/harness-demo show 40f416e:docs/superpowers/specs/2026-04-27-harness-demo-design.md)",
       "Bash(git -C /Users/perlou/Desktop/personal/harness-demo ls-tree -r d9aa823 --name-only)",
-      "Bash(wc -l /Users/perlou/Desktop/personal/harness-demo/CONCEPT.md /Users/perlou/Desktop/personal/harness-demo/CLAUDE.md /Users/perlou/Desktop/personal/harness-demo/README.md /Users/perlou/Desktop/personal/harness-demo/docs/*.md)"
+      "Bash(wc -l /Users/perlou/Desktop/personal/harness-demo/CONCEPT.md /Users/perlou/Desktop/personal/harness-demo/CLAUDE.md /Users/perlou/Desktop/personal/harness-demo/README.md /Users/perlou/Desktop/personal/harness-demo/docs/*.md)",
+      "Bash(chmod +x /Users/perlou/Desktop/personal/harness-demo/bin/harness)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm harness:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm view:*)",
+      "Bash(pnpm add:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }
