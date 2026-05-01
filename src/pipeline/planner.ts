@@ -12,6 +12,7 @@
 import type { IntentSpec, Plan } from "../../harness/contracts/index.js"
 import { getConfig } from "../config.js"
 import { demoPlanner } from "../planners/demo.js"
+import { createLivePlanner } from "../planners/live.js"
 import type { RunContext } from "./context.js"
 
 /** Planner 协议。Demo 与 Live 都实现这个接口。 */
@@ -26,8 +27,7 @@ function pickPlanner(): Planner {
     case "demo":
       return demoPlanner
     case "live":
-      // M8 会落地。这里先 fallback 到 demo，让 M3 阶段不阻塞。
-      return demoPlanner
+      return createLivePlanner()
     default: {
       const _exhaustive: never = cfg.mode
       throw new Error(`未知模式: ${String(_exhaustive)}`)
