@@ -8,6 +8,7 @@
 
 import { Command } from "commander"
 import { getConfig } from "../config.js"
+import { runAsk } from "./ask.js"
 import { runSeed } from "./seed.js"
 
 const NOT_IMPLEMENTED_EXIT_CODE = 64
@@ -26,8 +27,9 @@ program
   .command("ask")
   .description("提交一条自然语言意图，跑完整 harness pipeline")
   .argument("<question>", "自然语言请求，例如 \"上个月销售前 5\"")
-  .action((_question: string) => {
-    stub("ask", "M3 会落地 Intent → Plan → Check；M5 会接入出厂剧本。")
+  .action(async (question: string) => {
+    const code = await runAsk(question)
+    process.exit(code)
   })
 
 program
