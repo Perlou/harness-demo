@@ -15,6 +15,7 @@ export async function runAsk(question: string): Promise<number> {
   lines.push(`run id     : ${result.runId}`)
   lines.push(`status     : ${result.status}`)
   lines.push(`artifacts  : ${result.runDir}`)
+  lines.push(`report     : ${result.reportPath}`)
   if (result.intent) {
     lines.push(`intent     : ${JSON.stringify({
       goal: result.intent.goal,

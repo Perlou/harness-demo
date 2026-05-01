@@ -7,8 +7,8 @@
  *   - harness/scenarios/   场景
  *   - src/planners/        Planner 实现
  *
- * M3 阶段：Schema/Policy/Scenario 都是返回 passed=true 的占位实现，
- * 让骨架贯通；M4 会替换为真实检查。
+ * M3-M5 的占位检查已被 M4 替换为真实实现；M6 把 pending-approval 接到
+ * 独立的 approve/reject 命令；M7 在每个 finalize 路径都把 report.md 落盘。
  */
 
 import {
@@ -19,6 +19,7 @@ import {
 } from "../../harness/contracts/index.js"
 import { getConfig } from "../config.js"
 import { TraceEmitter, generateRunId } from "../trace/events.js"
+import { renderReport } from "../trace/report.js"
 import { RunArtifacts } from "../trace/writer.js"
 import type { RunContext } from "./context.js"
 import { decideApproval } from "./approval.js"
@@ -28,6 +29,7 @@ import { evaluateScenario } from "./scenarioEval.js"
 import { execute, type ExecuteResult } from "./executor.js"
 import { normalizeIntent } from "./intent.js"
 import { generatePlan } from "./planner.js"
+import { detectCase } from "../planners/cases.js"
 
 export interface RunResult {
   runId: string
@@ -37,10 +39,11 @@ export interface RunResult {
   plan?: Plan
   evaluation?: EvaluationResult
   result?: ExecuteResult
+  reportPath: string
 }
 
 /**
- * 跑一次完整 pipeline。无论成败都会落盘 runs/<id>/ 工件。
+ * 跑一次完整 pipeline。无论成败都会落盘 runs/<id>/ 工件 + report.md。
  */
 export async function runPipeline(rawText: string): Promise<RunResult> {
   const cfg = getConfig()
@@ -78,17 +81,18 @@ export async function runPipeline(rawText: string): Promise<RunResult> {
     artifacts.setStatus("checked")
 
     // 三道检查的失败优先级：schema → policy → scenario。
-    if (!schema.passed) return finalize(ctx, "rejected_by_schema",
-      { intent, plan, evaluation: evalResult })
-    if (!policy.passed) return finalize(ctx, "rejected_by_policy",
-      { intent, plan, evaluation: evalResult })
-    if (!scenario.passed) return finalize(ctx, "rejected_by_scenario",
-      { intent, plan, evaluation: evalResult })
+    if (!schema.passed) return finalize(ctx, "rejected_by_schema", startedAt,
+      { intent, plan, evaluation: evalResult }, rawText)
+    if (!policy.passed) return finalize(ctx, "rejected_by_policy", startedAt,
+      { intent, plan, evaluation: evalResult }, rawText)
+    if (!scenario.passed) return finalize(ctx, "rejected_by_scenario", startedAt,
+      { intent, plan, evaluation: evalResult }, rawText)
 
     // ---------- Approve ----------
     const decision = decideApproval(plan, intent, evalResult, ctx)
     if (decision === "rejected") {
-      return finalize(ctx, "rejected", { intent, plan, evaluation: evalResult })
+      return finalize(ctx, "rejected", startedAt,
+        { intent, plan, evaluation: evalResult }, rawText)
     }
     if (decision === "pending") {
       artifacts.setStatus("pending-approval")
@@ -97,8 +101,19 @@ export async function runPipeline(rawText: string): Promise<RunResult> {
         kind: "finalize.pending-approval",
         payload: {},
       })
-      return { runId, runDir: artifacts.runDir, status: "pending-approval",
-               intent, plan, evaluation: evalResult }
+      const finishedAt = new Date().toISOString()
+      writeReportFor(ctx, "pending-approval", startedAt, finishedAt, {
+        intent, plan, evaluation: evalResult,
+      }, rawText)
+      return {
+        runId,
+        runDir: artifacts.runDir,
+        status: "pending-approval",
+        intent,
+        plan,
+        evaluation: evalResult,
+        reportPath: reportPathFor(artifacts.runDir),
+      }
     }
 
     // decision === "auto"
@@ -108,12 +123,12 @@ export async function runPipeline(rawText: string): Promise<RunResult> {
     const result = execute(plan, ctx)
     artifacts.writeResult(result)
     if (!result.committed) {
-      return finalize(ctx, "committed_failed",
-        { intent, plan, evaluation: evalResult, result })
+      return finalize(ctx, "committed_failed", startedAt,
+        { intent, plan, evaluation: evalResult, result }, rawText)
     }
 
-    return finalize(ctx, "committed",
-      { intent, plan, evaluation: evalResult, result })
+    return finalize(ctx, "committed", startedAt,
+      { intent, plan, evaluation: evalResult, result }, rawText)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     ctx.trace.emit({
@@ -122,6 +137,9 @@ export async function runPipeline(rawText: string): Promise<RunResult> {
       payload: { error: message },
     })
     artifacts.setStatus("failed")
+    const finishedAt = new Date().toISOString()
+    writeReportFor(ctx, "failed", startedAt, finishedAt,
+      { intent, plan, evaluation: evalResult }, rawText)
     return {
       runId,
       runDir: artifacts.runDir,
@@ -129,14 +147,24 @@ export async function runPipeline(rawText: string): Promise<RunResult> {
       ...(intent !== undefined ? { intent } : {}),
       ...(plan !== undefined ? { plan } : {}),
       ...(evalResult !== undefined ? { evaluation: evalResult } : {}),
+      reportPath: reportPathFor(artifacts.runDir),
     }
   }
+}
+
+interface FinalizePartial {
+  intent?: IntentSpec
+  plan?: Plan
+  evaluation?: EvaluationResult
+  result?: ExecuteResult
 }
 
 function finalize(
   ctx: RunContext,
   status: RunStatus,
-  partial: Pick<RunResult, "intent" | "plan" | "evaluation" | "result">,
+  startedAt: string,
+  partial: FinalizePartial,
+  rawText: string,
 ): RunResult {
   ctx.artifacts.setStatus(status)
   ctx.trace.emit({
@@ -144,10 +172,41 @@ function finalize(
     kind: `finalize.${status}`,
     payload: {},
   })
+  const finishedAt = new Date().toISOString()
+  writeReportFor(ctx, status, startedAt, finishedAt, partial, rawText)
   return {
     runId: ctx.runId,
     runDir: ctx.artifacts.runDir,
     status,
     ...partial,
+    reportPath: reportPathFor(ctx.artifacts.runDir),
   }
+}
+
+function writeReportFor(
+  ctx: RunContext,
+  status: RunStatus,
+  startedAt: string,
+  finishedAt: string,
+  partial: FinalizePartial,
+  rawText: string,
+): void {
+  const cfg = getConfig()
+  const md = renderReport(
+    {
+      runId: ctx.runId,
+      status,
+      mode: cfg.mode,
+      startedAt,
+      finishedAt,
+      ...partial,
+      detectedCase: detectCase(rawText) ?? undefined,
+    },
+    ctx.artifacts.runDir,
+  )
+  ctx.artifacts.writeReport(md)
+}
+
+function reportPathFor(runDir: string): string {
+  return `${runDir}/report.md`
 }

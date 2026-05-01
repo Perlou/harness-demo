@@ -7,12 +7,14 @@
  *   - 一旦 run 离开 pending-approval（committed / rejected / failed），
  *     再次 approve 必须报错 —— 防止重放
  *   - 所有审批动作（包括人的批准本身）都写进既存的 trace.jsonl
+ *   - approve 完成后 **重写 report.md**，让最新状态覆盖前一版 pending
  */
 
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 
 import {
+  EvaluationResult,
   IntentSpec,
   Plan,
   type RunStatus,
@@ -21,7 +23,9 @@ import { getConfig } from "../config.js"
 import { closeDb } from "../db/client.js"
 import type { RunContext } from "../pipeline/context.js"
 import { execute } from "../pipeline/executor.js"
+import { detectCase } from "../planners/cases.js"
 import { TraceEmitter } from "../trace/events.js"
+import { renderReport } from "../trace/report.js"
 import { RunArtifacts } from "../trace/writer.js"
 
 export async function runApprove(runId: string): Promise<number> {
@@ -47,17 +51,13 @@ export async function runApprove(runId: string): Promise<number> {
   const plan = Plan.parse(
     JSON.parse(readFileSync(join(runDir, "plan.json"), "utf8")),
   )
+  const evaluation = safeReadEvaluation(runDir)
 
+  const startedAt = new Date().toISOString()
   const artifacts = new RunArtifacts(cfg.runsDir, runId)
   const trace = new TraceEmitter(runId)
   trace.on(artifacts.appendTrace)
-
-  const ctx: RunContext = {
-    runId,
-    startedAt: new Date().toISOString(),
-    trace,
-    artifacts,
-  }
+  const ctx: RunContext = { runId, startedAt, trace, artifacts }
 
   trace.emit({
     stage: "approve",
@@ -86,6 +86,26 @@ export async function runApprove(runId: string): Promise<number> {
     payload: {},
   })
 
+  // 重新落盘 report.md，把 status / result 更新进去。
+  const finishedAt = new Date().toISOString()
+  artifacts.writeReport(
+    renderReport(
+      {
+        runId,
+        status: finalStatus,
+        mode: cfg.mode,
+        startedAt,
+        finishedAt,
+        intent,
+        plan,
+        evaluation,
+        result,
+        detectedCase: detectCase(intent.rawText) ?? undefined,
+      },
+      runDir,
+    ),
+  )
+
   process.stdout.write(printSummary(runId, runDir, finalStatus, result.error))
   closeDb()
   return finalStatus === "committed" ? 0 : 1
@@ -93,6 +113,16 @@ export async function runApprove(runId: string): Promise<number> {
 
 function readStatus(runDir: string): string {
   return readFileSync(join(runDir, "status"), "utf8").trim()
+}
+
+function safeReadEvaluation(runDir: string): EvaluationResult | undefined {
+  const path = join(runDir, "evaluation.json")
+  if (!existsSync(path)) return undefined
+  try {
+    return EvaluationResult.parse(JSON.parse(readFileSync(path, "utf8")))
+  } catch {
+    return undefined
+  }
 }
 
 function printSummary(
@@ -105,6 +135,7 @@ function printSummary(
     `run id     : ${runId}`,
     `status     : ${status}`,
     `artifacts  : ${runDir}`,
+    `report     : ${runDir}/report.md`,
   ]
   if (error !== undefined) lines.push(`error      : ${error}`)
   return lines.join("\n") + "\n"
