@@ -8,6 +8,11 @@ tags = ['AI', 'Agents', 'Harness Engineering', 'OpenAI']
 
 # 深入解析 Harness Engineering：从零开始的完整指南
 
+> 📦 **配套开源参考实现**：[github.com/Perlou/harness-demo](https://github.com/Perlou/harness-demo)
+> 一份可直接运行的 SQL 助手 CLI（TypeScript + Zod + better-sqlite3 + OpenAI），
+> 把本文所有抽象概念落到可触摸的代码与可被 review 的工件上。完整安装命令
+> 与 4 个出厂剧本演示见下文 [§十一](#十一参考实现harness-demo)。
+
 ---
 
 ## 目录
@@ -22,7 +27,8 @@ tags = ['AI', 'Agents', 'Harness Engineering', 'OpenAI']
 - [八、典型应用场景](#八典型应用场景)
 - [九、落地中的常见反模式](#九落地中的常见反模式)
 - [十、最佳实践](#十最佳实践)
-- [十一、总结与学习路径](#十一总结与学习路径)
+- [十一、参考实现：harness-demo](#十一参考实现harness-demo)
+- [十二、总结与学习路径](#十二总结与学习路径)
 
 ---
 
@@ -1509,9 +1515,132 @@ function check(plan: Plan): Result {
 
 ---
 
-## 十一、总结与学习路径
+## 十一、参考实现：harness-demo
 
-### 11.1 核心要点回顾
+> 项目地址：**[github.com/Perlou/harness-demo](https://github.com/Perlou/harness-demo)**
+
+为了让上面所有抽象概念都落到具体可触摸的代码上，我们配套了一份完整的
+开源参考实现 —— **harness-demo**。它是一个 SQL 查询助手 CLI：用户输入
+自然语言（"上个月销售前 5 的产品"），系统按本范式生成 SQL 并必须经过完整
+五阶段 pipeline 才能真正动数据库。
+
+### 11.1 项目概览
+
+| 维度 | 数据 |
+|---|---|
+| 主语言 | TypeScript（strict + NodeNext ESM） |
+| 业务面 | 6 表电商 SQLite 库（Mulberry32 PRNG 确定性 seed） |
+| 控制平面 | 4 份 Zod 契约 + 3 条 yaml policy + 1 个 scenario + 2 份 prompt 模板 |
+| 测试 | 98 个用例 / 整体覆盖率 93.89%（pipeline 91.26%） |
+| 模式 | Demo（关键词分类）+ Live（OpenAI Chat Completions）**共用下游** |
+| 发布 | npm scoped 包 + Docker GHCR 多架构（amd64 + arm64）+ tag-driven CI/CD |
+
+### 11.2 控制平面与业务平面的物理分离
+
+```
+harness-demo/
+├─ harness/                  控制平面（数据 / 工件，无业务逻辑）
+│  ├─ contracts/             Zod schemas（IntentSpec / Plan / EvaluationResult）
+│  ├─ policies/              声明式 yaml 规则（matcher 注册表封闭）
+│  ├─ scenarios/             状态相关检查（行数预算等）
+│  └─ prompts/               Live Mode 用的 prompt 模板
+├─ src/
+│  ├─ pipeline/              5 阶段引擎（薄壳，不持有规则）
+│  ├─ planners/              demo / live 两个 Planner 实现
+│  ├─ db/                    业务平面（仅 executor 触碰写）
+│  └─ trace/                 事件总线 + 工件写入 + 报告渲染
+└─ runs/<id>/                每次运行的工件目录（gitignored）
+   ├─ intent.json
+   ├─ plan.json
+   ├─ evaluation.json
+   ├─ report.md              人类可读报告（6 大节）
+   ├─ trace.jsonl            完整事件流
+   └─ status                 单行状态机
+```
+
+**教学红线**：删任意一份 `harness/*.yaml`，系统行为应当发生**可观察变化**。
+否则说明规则没有真正被外化。
+
+### 11.3 四个出厂剧本
+
+每个剧本对应一份可被反复演示的 trace 工件，覆盖 harness 各阶段的拦截路径：
+
+| 剧本 | 输入 | harness 拦截点 | 终态 |
+|---|---|---|---|
+| **A · happy path** | 上个月销售前 5 的产品 | 全过 → 自动放行 | `committed` |
+| **B · PII 拦截** | 导出所有客户的邮箱和手机号 | Policy: `pii-fields` | `rejected_by_policy` |
+| **C · 缺时间过滤** | orders 表里有多少行 | Policy: `require-time-bounds` | `rejected_by_policy` |
+| **D · 写操作审批** | 把已发货 90 天的订单标记为已完成 | `destructive-needs-approval` 升级 | `pending-approval` |
+
+剧本 D 还演示了**两阶段审批**的完整路径：`harness ask` 后产物落到
+`pending-approval` 状态，需要人手动 `harness approve <run-id>` 或
+`harness reject <run-id> --reason "..."` 才会触发真正的写入或拒绝。
+
+### 11.4 三十秒上手
+
+```bash
+git clone https://github.com/Perlou/harness-demo
+cd harness-demo
+pnpm install
+pnpm seed                          # 生成示例 SQLite
+pnpm walkthrough                   # 一键跑完 4 个剧本（含 approve）
+```
+
+或用 Docker（不依赖宿主机 Node）：
+
+```bash
+docker run --rm \
+  -v "$PWD/data:/app/data" \
+  -v "$PWD/runs:/app/runs" \
+  ghcr.io/perlou/harness-demo:latest ask "上个月销售前 5 的产品"
+```
+
+启用 Live Mode 接真实 OpenAI：
+
+```bash
+HARNESS_MODE=live OPENAI_API_KEY=sk-... pnpm harness ask "..."
+```
+
+### 11.5 同一下游证明
+
+仓库里专门有一组测试演示**同一份下游 pipeline 同时约束规则系统和真实模型**：
+
+```ts
+// 让"假 LLM"故意输出含 PII 的 SQL
+setLivePlannerClientForTests(fakeClient(JSON.stringify({
+  steps: [{ kind: "sql", mode: "read",
+    sql: "SELECT customers.id, customers.email FROM customers" }]
+})))
+
+const r = await runPipeline("any input")
+expect(r.status).toBe("rejected_by_policy")  // pii-fields 照样拦下
+```
+
+这是 harness engineering 主张最强的可执行证明 —— 无论 plan 来自规则引擎
+还是 LLM 黑盒，下游 schema/policy/scenario/approval/executor **都是同一份代码**。
+
+### 11.6 仓库内导航
+
+| 文档 | 给谁看 |
+|---|---|
+| `README.md` | 5 分钟上手 + 项目入口 |
+| `docs/requirements.md` | 需求 / 用户场景 / 验收标准 |
+| `docs/architecture.md` | 技术架构 15 节（含发布管线） |
+| `docs/roadmap.md` | M0–M10 主线 + Stage A 发布管线进度表 |
+| `docs/deployment.md` | 安装 / 发布流程 / CI/CD 流水线 |
+| `harness/contracts/README.md` | 契约语义边界 + 演进规则 |
+| `harness/policies/README.md` | 规则总结 + matcher 注册表 |
+| `skills/harness-engineering/SKILL.md` | 把本文范式提炼为 LLM 可加载的 skill |
+| `CLAUDE.md` | 给 AI 协作者的工作约束 |
+
+整个仓库同时充当三件事 ——**教学 demo** / **可发布的开源 CLI** /
+**Claude Code skill 母本**。文档与代码 100% 对齐。
+
+---
+
+## 十二、总结与学习路径
+
+### 12.1 核心要点回顾
 
 ```
 ┌─────────────────── Harness Engineering 知识图谱 ───────────────────┐
@@ -1551,7 +1680,7 @@ function check(plan: Plan): Result {
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### 11.2 推荐学习路径
+### 12.2 推荐学习路径
 
 ```
 Week 1: 理念建立
@@ -1585,7 +1714,7 @@ Week 5+: 团队应用
 └── 在团队层面建立 harness 工程师角色
 ```
 
-### 11.3 自我检查清单
+### 12.3 自我检查清单
 
 落地一个 harness 系统时，对照以下清单检查：
 
@@ -1602,10 +1731,12 @@ Week 5+: 团队应用
 □ 是否有按风险分级（不是所有动作都强制 5 阶段）？
 ```
 
-### 11.4 参考资源
+### 12.4 参考资源
 
 | 资源 | 内容 |
 |---|---|
+| **[github.com/Perlou/harness-demo](https://github.com/Perlou/harness-demo)** | 本文配套的可运行参考实现（TS + Zod + better-sqlite3 + OpenAI）|
+| `skills/harness-engineering/SKILL.md`（同仓库） | 把本文范式提炼为 LLM 可加载的 skill 工件 |
 | OpenAI 官方博客 | Harness Engineering 原始论述（2026/2） |
 | Anthropic 工程博客 | Constitutional AI / Tool Use 安全实践 |
 | `zod` / `pydantic` | 契约工具的代表实现 |
@@ -1613,7 +1744,7 @@ Week 5+: 团队应用
 | `OPA` / `Cedar` | 声明式规则引擎，policy 表达可参考 |
 | `OpenTelemetry` | 结构化 trace 的工业标准 |
 
-### 11.5 一段话作为结尾
+### 12.5 一段话作为结尾
 
 > Harness Engineering 真正在说的事，是**软件工程的核心产出物正在变化**。
 >
